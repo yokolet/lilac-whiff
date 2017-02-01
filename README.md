@@ -11,329 +11,88 @@ how the server was setup.
 - Web Application: http://ec2-52-34-19-54.us-west-2.compute.amazonaws.com/
 
 
-## Configurations
+## Summaries
 
-### User setting
+### Installed Software
 
-- Create a new user, `grader`
+- PostgreSQL
+- Apache HTTP Server
+- mod_wsgi
+- git
+- Python related
+    - (Linux package) python-psycopg2
+    - (Linux package) python-flask
+    - (Linux package) python-sqlalchemy
+    - (Linux package) python-pip
+    - (Python package) Flask-Restless
+    - (Python package) oauth2client
+    - (Python package) httplib2
+  
+### Configuration Change
 
-Run `adduser` command and input the password twice when prompted.
+#### Making a new user grader sudoer
 
-```bash
-root# sudo adduser grader
-...
-...
-Enter new UNIX password: 
-Retype new UNIX password: 
-passwd: password updated successfully
-Changing the user information for grader
-Enter the new value, or press ENTER for the default
-	Full Name []: Grader
-	Room Number []: 
-	Work Phone []: 
-	Home Phone []: 
-	Other []: 
-Is the information correct? [Y/n] 
-```
+- A new file, `/etc/sudoers.d/grader`
+- Changed password requesting interval in `/etc/sudoers`
 
-- Give `grader` a permission to sudo
+#### Making SSH secure
 
-Create a new file `/etc/sudoers.d/grader` and add one line as in below:
+All changes are done in the file `/etc/ssh/sshd_config`
 
-```bash
-root# sudo vim /etc/sudoers.d/grader
-```
-```
-grader ALL=(ALL) ALL
-```
+- Port change: `Port 2200`
+- Disabling password authentication: `PasswordAuthentication no`
+- Disabling root login: `PermitRootLogin no`
 
-- Make `sudo` ask password at some interval
+#### Firewall setting
 
-Open `/etc/sudoers` using the command below and add `timestamp_timeout`.
+Incoming connections are limited to:
 
-```bash
-root# sudo visudo
-```
-```
-Defaults        env_reset,timestamp_timeout=5
-```
+- SSH (Port 2200)
+- HTTP (Port 80),
+- NTP (Port 123)
 
-By these changes, a user `grader` got a super user access.
-From now, all setup are done by the `grader` instead of `root`.
+#### PostgreSQL setting
+
+By default, a remote access is disabled. No change was made on
+PostgreSQL itself.
 
 
-- User change
+Other than that, a database access user, `catalog` was created.
+The user `catalog` has all permissions to the database `catalog`.
+The user is also an Apache process owner.
 
-```bash
-# su - grader
-```
+#### Flask app
 
-
-### SSH setting
-
-- SSH port change
-
-Open the file `/etc/ssh/sshd_config` and change `Port` parameter to 2200
-
-```bash
-grader@ sudo vim /etc/ssh/sshd_config
-```
-
-On this Ubuntu, the setting is around line 5.
-
-```
-# What ports, IPs and protocols we listen for
-Port 2200
-```
-
-- Disable password authentication
-
-On the same file, `/etc/ssh/sshd_config`, change `PasswordAuthentication` to no.
-On this Ubuntu, the setting is aroung line 50.
+The app was cloned out from Github repository. It resides
+in `/home/grader/serene-cliffs/vagrant/catalog` directory.
 
 
-```
-# Change to no to disable tunnelled clear text passwords
-PasswordAuthentication no
+There were a few relative paths references in flask app. Those
+were replaced by absolute paths.
+
+Explicit port number setting was removed, and it is now:
+
+```python
+app.run()
 ```
 
 
-- Disable the remote login by a user `root`.
+OAuth settings at Facebook and Google were updated to allow
+this server as the redirect endpoint.
 
-After disabling the `root` user login, at least, one user should have
-ssh login access to the server. The steps below is to give `grader` ssh login
-from a remote machine.
+#### Apache HTTP server setting
 
-Create `.ssh/authorized_keys` file and copy&paste a public key
-from `/root/.ssh/authorized_keys`.
+- Home directory: `/var/www/catalog`
+- WSGI script: `/var/www/catalog/catalog.wsgi`
+- Apache configuration: `/etc/apache2/sites-enabled/000-default.conf`
+- (edited) Apache Envvars: `/etc/apache2/envvars`
 
-```bash
-grader@ vim ~/.ssh/authorized_keys
-```
-Add the public key:
-```
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAA....(snip)...
-...(snip)...
-...(snip)...4pqklO8yan/z3dzOyy1dcWltD Udacity Student
-```
 
-- Restart the ssh process
+## References
 
-```bash
-grader@ sudo service ssh restart
-```
-
-
-### Firewall setting
-
-This will set the Uncomplicated Firewall (UFW) to allow SSH(port 2200),
-HTTP (port 80), and NTP(port 123) incoming connections.
-
-```
-grader@ sudo ufw default deny incoming
-grader@ sudo ufw default allow outgoing
-grader@ sudo ufw allow 2200/tcp
-grader@ sudo ufw allow www
-grader@ sudo ufw allow ntp
-grader@ sudo ufw enable
-grader@ sudo ufw status
-
-Status: active
-
-To                         Action      From
---                         ------      ----
-2200/tcp                   ALLOW       Anywhere
-80/tcp                     ALLOW       Anywhere
-123                        ALLOW       Anywhere
-2200/tcp (v6)              ALLOW       Anywhere (v6)
-80/tcp (v6)                ALLOW       Anywhere (v6)
-123 (v6)                   ALLOW       Anywhere (v6)
-
-```
-
-### Timezone setting
-
-This step is to change timezone to UTC if it is not. First check the current
-timezone by `date` command.
-
-```
-grader@ date
-Wed Feb  1 03:58:57 UTC 2017
-```
-
-In this case, the timezone is already set to UTC. If not, use the
-command:
-
-```bash
-grader@ sudo dpkg-reconfigure tzdata
-```
-
-Choose `None of the above` by hitting a return key, then choose `UTC`.
-Move the cursor by hitting a tab key, then choose `Ok`.
-
-```bash
-Current default time zone: 'Etc/UTC'
-Local time is now:      Wed Feb  1 04:04:09 UTC 2017.
-Universal Time is now:  Wed Feb  1 04:04:09 UTC 2017.
-```
-
-### Update packages
-
-Before installing new software packages, update all packages already installed.
-
-```bash
-grader@ sudo apt-get update
-grader@ sudo apt-get upgrade
-```
-
-### PostgreSQL
-
-- PostgreSQL installation
-
-```bash
-grader@ sudo apt-get install postgresql
-```
-
-- Disallow remote connections
-
-This is a default setting, probably, there's any to make this available.
-The file, `/etc/postgresql/9.3/main/pg_hba.conf`, has entries as in below:
-
-```
-# TYPE  DATABASE        USER            ADDRESS                 METHOD
-
-# "local" is for Unix domain socket connections only
-local   all             all                                     peer
-# IPv4 local connections:
-host    all             all             127.0.0.1/32            md5
-# IPv6 local connections:
-host    all             all             ::1/128                 md5
-```
-
-- Create a user `catalog`
-
-```bash
-grader@ sudo -u postgres createuser -P catalog
-Enter password for new role: 
-Enter it again: 
-```
-
-- Give all access to a database `catalog`
-
-```bash
-grader@ sudo -u postgres psql
-psql (9.3.15)
-Type "help" for help.
-
-postgres=# create database catalog;
-CREATE DATABASE
-
-postgres=# grant all privileges on database catalog to catalog;
-GRANT
-```
-
-- Access database by a user `catalog`
-
-Once `catalog` user and database are created, the database can be
-access by:
-
-```bash
-grader@ psql -U catalog -d catalog -h localhost
-Password for user catalog: 
-psql (9.3.15)
-SSL connection (cipher: DHE-RSA-AES256-GCM-SHA384, bits: 256)
-Type "help" for help.
-
-catalog=>
-```
-
-### Clone out Catalog app from Github repository
-
-- Install git and setup
-
-```bash
-grader@ sudo apt-get install git
-grader@ git config --global user.name "John Doe"
-grader@ git config --global user.email johndoe@example.com
-```
-
-- Create a key-pair to set github repository
-
-```bash
-grader@ ssh-keygen
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/grader/.ssh/id_rsa): 
-Created directory '/home/grader/.ssh'.
-Enter passphrase (empty for no passphrase): 
-Enter same passphrase again: 
-Your identification has been saved in /home/grader/.ssh/id_rsa.
-Your public key has been saved in /home/grader/.ssh/id_rsa.pub.
-The key fingerprint is:
-.....
-.....
-```
-
-- Add a public key to Github account
-
-After login to the Github account, go to `https://github.com/settings/keys`.
-Click `New SSH key` and add public key (`.ssh/id_rsa.pub`).
-
-- Clone the repo
-
-```bash
-grader@ git clone [catalog app github url]
-```
-
-
-### Apache HTTP server
-
-- Apache HTTP server(`apache2` package) installation
-
-```bash
-grader@ sudo apt-get install apache2
-```
-
-When the installation finishes, Apache HTTP server starts running.
-
-
-- Find the server URL
-
-External IP address is the one used to ssh this instance.
-However, the IP can be check inside the EC2 instance.
-The document,
-[Amazon EC2 Instance IP Addressing](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-instance-addressing.html)
-explains how.
-Make a request to the exactly the same url in the document.
-
-```
-grader@ curl http://169.254.169.254/latest/meta-data/public-ipv4
-52.34.19.54
-```
-
-Then, hit the `host` command to know a fully qualified domain name of the IP.
-
-```
-grader@ host 52.34.19.54
-54.19.34.52.in-addr.arpa domain name pointer ec2-52-34-19-54.us-west-2.compute.amazonaws.com.
-```
-
-Apache HTTP server is accessible by the URL from anywhere:
-```
-http://ec2-52-34-19-54.us-west-2.compute.amazonaws.com/
-```
-
-
-- Lynx (Command line browser)
-
-The command, `curl localhost`, works to check the website on the remote server. 
-However, `curl` output is not human friendly. For this reason,
-install `lynx`.
-
-```
-grader@ sudo apt-get install lynx
-```
-
-The command, `lynx localhost`, shows the website much better.
-
-
+Multiple sources from:
+- [ask ubuntu](http://askubuntu.com/)
+- [DigitalOcean](https://www.digitalocean.com/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/9.3/static/index.html)
+- Stackoverflow questions
 
