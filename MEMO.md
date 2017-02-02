@@ -526,3 +526,19 @@ Once all setups are done, restart the Apache process:
 ```bash
 grader@ sudo service apache2 restart
 ```
+
+
+# Useful Resources
+
+- (book)[Linux in a Nutshell](https://www.amazon.com/Linux-Nutshell-Ellen-Siever/dp/0596154488)
+- (blog) [nixCraft](https://www.cyberciti.biz/)
+- (article) [77 Linux commands and utilities you'll actually use](http://searchenterpriselinux.techtarget.com/tutorial/77-useful-Linux-commands-and-utilities)
+- (doc) [An A-Z index of the Bash command line for Linux](http://ss64.com/bash/)
+
+# Useful Tools to be considered
+
+- `fail2ban`: monitoring and IP panning tool, detects malicious signs
+    - [official site](http://www.fail2ban.org/wiki/index.php/Main_Page),
+    - [tutorial](https://www.digitalocean.com/community/tutorials/how-to-protect-an-apache-server-with-fail2ban-on-ubuntu-14-04)
+- `Glances`: System monitoring tool, web based interface available
+    - [web site](https://pypi.python.org/pypi/Glances)
